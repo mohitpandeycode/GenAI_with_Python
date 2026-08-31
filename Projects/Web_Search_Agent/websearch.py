@@ -3,6 +3,7 @@ from langchain_groq import ChatGroq
 from langchain.agents import create_agent
 from langchain_tavily import TavilySearch
 from langchain_core.tools import tool
+from langgraph.checkpoint.memory import InMemorySaver  # used for save memory fo the chat agent
 
 load_dotenv()
 
@@ -14,7 +15,7 @@ max_results=1,
 topic="general",
 )
 
-# web search agent
+# web search tool
 @tool("web_search", description="Performs web searches to search real time update data for user query")
 def web_search(query:str) -> str:
     """this tool can able to perform web searches for the user qyery that can help to fetch real time update data
@@ -32,17 +33,17 @@ def web_search(query:str) -> str:
 agent = create_agent(
     model = llm,
     tools=[web_search],
+    checkpointer = InMemorySaver(), # initialize the chekpointer for memory inside the agent
     system_prompt="You are a best search agent Use web_search when current information is required. Give concise answers when the user asks for a short answer."
+
 )
 
-memory = []
 
 while True:
     query = input("User:" )
-    memory.append({"role":"user","content":query})
-    
-    res = agent.invoke({"messages":memory})
+    res = agent.invoke(
+                    {"messages":query},
+                    {"configurable": {"thread_id": "mohit"}} #give a unique id to the memory 
+                )
     result = res["messages"][-1].content
-    memory.append({"role":"ai","content":result})
-
     print("AI:" ,result)
